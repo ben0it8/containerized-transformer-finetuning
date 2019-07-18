@@ -8,8 +8,14 @@ RUN \
     apt-get install --yes --no-install-recommends  \
         ca-certificates \
         curl libcurl3 \
+<<<<<<< HEAD
         libgl1-mesa-glx \ 
         software-properties-common \
+=======
+        zlibc zlib1g zlib1g-dev \
+        software-properties-common \
+        git \
+>>>>>>> ae0f38ff81228459faa5187a1b29975f23ebbb28
         locales \
         gcc && \
     echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
@@ -40,7 +46,11 @@ ENV LANG=en_US.UTF-8 \
 RUN \
     conda install -y setuptools && \    
     pip install --upgrade pip && \
+<<<<<<< HEAD
     pip install typing && \
+=======
+    pip install --upgrade Cython && \
+>>>>>>> ae0f38ff81228459faa5187a1b29975f23ebbb28
     conda clean -ya
 
 # Install requirements
@@ -68,7 +78,16 @@ RUN \
     mkdir -p $DATA_PATH && \
     chmod -R a+rwx $DATA_PATH
 
+<<<<<<< HEAD
 # copy resources
 COPY docker-res/utils.py "$RESOURCES_PATH/"
 COPY docker-res/run.py "$RESOURCES_PATH/"
 CMD ["python", "/resources/run.py"]
+=======
+# Install Training Requirements
+
+
+# Run job
+COPY docker-res/run.py "$_RESOURCES_PATH/"
+CMD ["python", "/resources/run.py"]
+>>>>>>> ae0f38ff81228459faa5187a1b29975f23ebbb28
