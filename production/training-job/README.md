@@ -1,20 +1,27 @@
-# Docker job template
+# Transformer Fine-Tuning Job
 
 ------
 
 ## Description
 
-## Usage
+## Usage 
 
 Run the training job by executing this command with your chosen configuration:
 
 ```bash
-docker run training-job-template
+docker run finetuning-job
 ```
+
+To enable the Nvidia Container Runtime for GPU-acceleration, execute:
+
+```bash
+docker run --runtime=nvidia finetuning-job
+```
+
 
 Execute this command for interactive run mode:
 ```bash
-docker run -it --entrypoint=/bin/bash training-job-template
+docker run -it --entrypoint=/bin/bash finetuning-job
 ```
 
 
@@ -28,7 +35,7 @@ The training job can be parametrized with environment variables. These can be de
 
 The training job can be configured with following environment variables:
 
-Example variables:
+Example varibables:
 
 <table>
     <tr>
@@ -37,31 +44,61 @@ Example variables:
         <th>Default</th>
     </tr>
      <tr>
-        <td>TRAIN_SET_URL</td>
-        <td>url to training data</td>
-        <td></td>
+        <td>NUM_TRAIN</td>
+        <td>Max no. of training samples.</td>
+        <td>5000</td>
     </tr>
     <tr>
-        <td>TEST_SET_URL</td>
-        <td>url to test data</td>
-        <td></td>
+        <td>NUM_TEST</td>
+        <td>Max no. of test samples.</td>
+        <td>5000</td>
     </tr>
+    <tr>
+        <td>NUM_MAX_POSITIONS</td>
+        <td>Max no. of positions to use as context (sequence length, max 256).</td>
+        <td>256</td>
+    </tr>
+    <tr>
+        <td>N_EPOCHS</td>
+        <td>No. of training epochs</td>
+        <td>2</td>
+    </tr>  
+    <tr>  
+        <td>BATCH_SIZE</td>
+        <td>Size of training/test batches for SGD.</td>
+        <td>32</td>
+    </tr>
+     <tr>
+        <td>VALID_PCT</td>
+        <td>Percentage of validation set split from train set.</td>
+        <td>0.05</td>
+    </tr>    
+    <tr>
+        <td>LR</td>
+        <td>Initial learning rate.</td>
+        <td>0.000065</td>
+    </tr>
+    <tr>
+        <td>MAX_NORM</td>
+        <td>Max. value of L2 norm of weights.</td>
+        <td>1.5</td>
+    </tr>
+    <tr>
         <td>SEED</td>
-        <td>Global seed used for random numbers.</td>
-        <td>42</td>
-    </tr>
-        <td colspan="3">AWS config </td>
+        <td>Random seed used to torch and numpy.</td>
+        <td>1337</td>
     </tr>
     <tr>
-        <td>acces_key</td>
-        <td>AWS access key</td>
-        <td>(required)</td>
+        <td>NVIDIA_VISIBLE_DEVICES</td>
+        <td>Controls which GPUs will be accessible inside the container.</td>
+        <td>all</td>
     </tr>
     <tr>
-        <td>S3 bucket</td>
-        <td>url to S3 bucket containing data</td>
-        <td>(required)</td>
+        <td>OMP_NUM_THREADS</td>
+        <td>No. of OpenMP threads used by PyTorch. Shouldn't exceed the no. of physical threads.</td>
+        <td>8</td>
     </tr>
+
    
 </table>
 
@@ -84,7 +121,7 @@ You can find more ways of configuration about [docker run](https://docs.docker.c
 Execute this command in the project root folder to build the docker container:
 
 ```bash
-python build.py --version={MAJOR.MINOR.PATCH-TAG}
+python build.py --name finetuning-job --version={MAJOR.MINOR.PATCH-TAG}
 ```
 
 The version has to be provided. The version format should follow the [Semantic Versioning](https://semver.org/) standard (MAJOR.MINOR.PATCH). For additional script options:
@@ -98,7 +135,7 @@ python build.py --help
 Execute this command in the project root folder to push the container to the configured docker registry:
 
 ```bash
-python build.py --deploy --version={MAJOR.MINOR.PATCH-TAG}
+python build.py --name finetuning-job --deploy --version={MAJOR.MINOR.PATCH-TAG}
 ```
 
 The version has to be provided. The version format should follow the [Semantic Versioning](https://semver.org/) standard (MAJOR.MINOR.PATCH). For additional script options:
@@ -109,10 +146,10 @@ python build.py --help
 
 #### Configure Docker Repository
 
-In order to pull and push docker containers, the <DOCKER REPOSITORY> needs to be configured:
+In order to pull and push docker containers, our Docker registry needs to be configured:
 
 ```bash
-docker login <docker repo>
+docker login <server>
 ```
 
-and your user and password to login.
+and entering your user and password to login.

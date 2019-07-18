@@ -1,0 +1,5 @@
+pandas
+tqdm
+torch==1.1.0
+pytorch_transformers
+pytorch-ignite

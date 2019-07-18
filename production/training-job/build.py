@@ -3,7 +3,7 @@ import subprocess
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', help='name of docker container', default="training-job-template")
+parser.add_argument('--name', help='name of docker container', default="finetuning-job")
 parser.add_argument('--version', help='version tag of docker container', default="latest")
 parser.add_argument('--proxy', help="proxy server to use (for both http and https)", default=None)
 parser.add_argument('--image_prefix', help='image prefix to use', default="")
@@ -41,7 +41,6 @@ if failed:
     sys.exit()
 
 REMOTE_IMAGE_PREFIX = args.image_prefix
-
 remote_versioned_image = REMOTE_IMAGE_PREFIX + versioned_image
 call("docker tag " + versioned_image + " " + remote_versioned_image)
 
