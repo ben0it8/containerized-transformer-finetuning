@@ -1,23 +1,16 @@
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
-ARG PYTHON_VERSION=3.7
+ARG PYTHON_VERSION=3.6
 
 # Install basics
 RUN \
     apt-get update && \
     apt-get install sudo --yes && \
     apt-get install --yes --no-install-recommends  \
-        ca-certificates \
-        curl libcurl3 \
-<<<<<<< HEAD
-        libgl1-mesa-glx \ 
         software-properties-common \
-=======
-        zlibc zlib1g zlib1g-dev \
-        software-properties-common \
-        git \
->>>>>>> ae0f38ff81228459faa5187a1b29975f23ebbb28
-        locales \
-        gcc && \
+        build-essential \
+        gcc \ 
+        curl \
+        locales && \
     echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
     chmod -R a+rwx /usr/local/bin/ && \
@@ -33,6 +26,7 @@ RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-la
      ~/miniconda.sh -b -p /opt/conda && \
      rm ~/miniconda.sh && \
      /opt/conda/bin/conda install -y python=$PYTHON_VERSION && \
+    #  /opt/conda/bin/conda install pytorch cudatoolkit=10.0 -c pytorch && \
      /opt/conda/bin/conda clean -ya
 
 ENV PATH /opt/conda/bin:$PATH
@@ -46,28 +40,24 @@ ENV LANG=en_US.UTF-8 \
 RUN \
     conda install -y setuptools && \    
     pip install --upgrade pip && \
-<<<<<<< HEAD
-    pip install typing && \
-=======
-    pip install --upgrade Cython && \
->>>>>>> ae0f38ff81228459faa5187a1b29975f23ebbb28
-    conda clean -ya
-
-# Install requirements
+    pip install typing
+# Install training requirements
 COPY docker-res/requirements.txt "/tmp/"
-RUN pip install -r "tmp/requirements.txt"
+RUN pip install -r "tmp/requirements.txt" && \
+    pip install --upgrade bottle && \
+    conda clean -ya
 
 # # Set env variables: paths for resources and data + some configs
 ENV RESOURCES_PATH="/resources" \ 
     DATA_PATH="/data" \
-    NUM_TRAIN_SAMPLES="5000" \
-    NUM_TEST_SAMPLES="5000" \ 
+    NUM_TRAIN="5000" \
+    NUM_TEST="5000" \ 
     NUM_MAX_POSITIONS="256" \ 
-    N_EPOCHS="2" \ 
-    BATCH_SIZE="32" \
+    N_EPOCHS="1" \ 
+    BATCH_SIZE="8" \
     VALID_PCT="0.05" \
     LR="0.000065" \
-    MAX_NORM="1.5" \ 
+    MAX_NORM="2.0" \ 
     SEED="1337" \
     NVIDIA_VISIBLE_DEVICES="all" \
     OMP_NUM_THREADS="8" 
@@ -78,16 +68,12 @@ RUN \
     mkdir -p $DATA_PATH && \
     chmod -R a+rwx $DATA_PATH
 
-<<<<<<< HEAD
 # copy resources
 COPY docker-res/utils.py "$RESOURCES_PATH/"
 COPY docker-res/run.py "$RESOURCES_PATH/"
-CMD ["python", "/resources/run.py"]
-=======
-# Install Training Requirements
+COPY docker-res/app.py "$RESOURCES_PATH/"
 
-
-# Run job
-COPY docker-res/run.py "$_RESOURCES_PATH/"
+# run training
 CMD ["python", "/resources/run.py"]
->>>>>>> ae0f38ff81228459faa5187a1b29975f23ebbb28
+# open 
+CMD ["python", "/resources/app.py"]

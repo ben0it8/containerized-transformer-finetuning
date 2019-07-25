@@ -1,18 +1,16 @@
-"""
-TODO
-* multiprocessing for dataloader
-"""
-
 import sys
 from utils import *
 
 import logging
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger("run.py")
 
 # path to data 
 DATA_DIR = getenv_cast("DATA_PATH", cast=str)
+
+# path to resources
+RESOURCES_DIR = getenv_cast("RESOURCES_PATH", cast=str)
 
 # path to IMDB
 IMDB_DIR = os.path.join(DATA_DIR, "imdb5k")
@@ -20,11 +18,11 @@ IMDB_DIR = os.path.join(DATA_DIR, "imdb5k")
 # url to IMDB data, pretraining args and checkpoint
 IMDB_URL = "https://github.com/ben0it8/transformer-finetuning/raw/master/imdb5k.tar.gz"
 PRETRAINING_ARGS_URL = "https://s3.amazonaws.com/models.huggingface.co/naacl-2019-tutorial/model_training_args.bin"
-PRETRAINING_CKPT_URL = "https://s3.amazonaws.com/models.huggingface.co/naacl-2019-tutorial/model_training_args.bin"
+PRETRAINING_CKPT_URL = "https://s3.amazonaws.com/models.huggingface.co/naacl-2019-tutorial/model_checkpoint.pth"
 
 # get configs from env vars
-MAX_TRAIN = getenv_cast("NUM_TRAIN_SAMPLES", cast=int)
-MAX_TEST = getenv_cast("NUM_TEST_SAMPLES", cast=int)
+MAX_TRAIN = getenv_cast("NUM_TRAIN", cast=int)
+MAX_TEST = getenv_cast("NUM_TEST", cast=int)
 NUM_MAX_POSITIONS = getenv_cast("NUM_MAX_POSITIONS", cast=int)
 if NUM_MAX_POSITIONS > 256: 
     logger.warning(f"`NUM_MAX_POSITIONS` has to be smaller than 256")
@@ -42,22 +40,14 @@ torch.set_num_threads(OMP_NUM_THREADS)
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 
-LOG_DIR = "./logs/"
-CACHE_DIR = "./cache/"
+LOG_DIR = "/logs/"
 
 # make code device agnostic
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-FineTuningConfig = namedtuple(
-    'FineTuningConfig',
-    field_names=
-    "num_classes, dropout, init_range, batch_size, lr, max_norm, n_epochs,"
-    "n_warmup, valid_pct, gradient_acc_steps, device, log_dir, dataset_cache")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 finetuning_config = FineTuningConfig(
     2, 0.1, 0.02, BATCH_SIZE, LR, MAX_NORM, N_EPOCHS,
-    10, VALID_PCT, 4, device, LOG_DIR, 
-    CACHE_DIR+'dataset_cache.bin')
+    10, VALID_PCT, 2, device, LOG_DIR)
 
 
 if __name__ == "__main__":
@@ -153,23 +143,43 @@ if __name__ == "__main__":
                                          save_interval=1, require_empty=False)
     trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {'imdb_model': model})
 
-    # save config to logdir
-    torch.save(finetuning_config, os.path.join(finetuning_config.log_dir, 'fine_tuning_args.bin'))          
+    int2label = {i:label for label,i in label2int.items()}
+      
+    # save metadata
+    torch.save({
+        "config": config,
+        "config_ft": finetuning_config,
+        "int2label": int2label
+    }, os.path.join(finetuning_config.log_dir, "metadata.bin"))
     
     @timeit
     def train():
-        # fit the model on train_dl
+        "fit the model on `train_dl`"
         trainer.run(train_dl, max_epochs=finetuning_config.n_epochs)
 
     @timeit
     def eval():
-        # evaluate the model on test_dl
+        "evaluate the model on `test_dl`"
         evaluator.run(test_dl)
         print(f"Test accuracy: {100*evaluator.state.metrics['accuracy']:.3f}")
 
-    train()
+    
+    try:
+        logger.warning(f"Training started on device: {device}")
+        train()
+    except Exception as error:
+        logger.error(f"Error occurred: {error}")
+        raise
+
     eval()
+    
+    # save model weights
+    torch.save(model.state_dict(), os.path.join(finetuning_config.log_dir, "model_weights.pth"))
 
     job_time = timedelta(seconds = round(time()-t0,1))
     print(f"Job finished, runtime: {str(job_time):0>8} ")
+    
+    from subprocess import call
+    call(['python', RESOURCES_DIR+'/app.py'])    
+
     sys.exit(0)

@@ -11,6 +11,9 @@ import requests
 import tarfile
 from functools import wraps
 from time import time
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import cpu_count
+from itertools import repeat
 from datetime import timedelta
 
 import re
@@ -37,9 +40,17 @@ from ignite.contrib.handlers import CosineAnnealingScheduler, PiecewiseLinear, c
 
 logger = logging.getLogger()
 
+num_cores = cpu_count()
+
 # text and label column names
 TEXT_COL = "text"
 LABEL_COL = "label"
+
+FineTuningConfig = namedtuple(
+    'FineTuningConfig',
+    field_names=
+    "num_classes, dropout, init_range, batch_size, lr, max_norm, n_epochs,"
+    "n_warmup, valid_pct, gradient_acc_steps, device, log_dir")
 
 
 class TextProcessor:
@@ -190,12 +201,14 @@ def timeit(f):
     def wrapper(*args, **kwargs):
         ts = time()
         result = f(*args, **kwargs)
-        delta = timedelta(seconds = round(time()-ts, 1))
+        delta = timedelta(seconds=round(time() - ts, 1))
         print(f"Elapsed time for {f.__name__}: {str(delta):0>8}")
         return result
+
     return wrapper
 
 
+@timeit
 def download_url(url: str,
                  dest: str,
                  overwrite: bool = True,
@@ -221,7 +234,7 @@ def download_url(url: str,
         if show_progress:
             pbar = tqdm(range(file_size),
                         leave=True,
-                        desc=f"downloading {os.path.basename(url)}")
+                        desc=f"Downloading {os.path.basename(url)}")
         try:
             for chunk in u.iter_content(chunk_size=chunk_size):
                 nbytes += len(chunk)
@@ -235,6 +248,7 @@ def download_url(url: str,
             return dest
 
 
+@timeit
 def untar(file_path, dest: str):
     "Untar `file_path` to `dest`"
     logger.info(f"Untar {os.path.basename(file_path)} to {dest}")
@@ -249,6 +263,7 @@ def clean_html(raw: str):
     return re.sub(' +', ' ', clean)
 
 
+@timeit
 def read_imdb(data_dir, max_lengths={"train": None, "test": None}):
     datasets = {}
     for t in ["train", "test"]:
@@ -261,6 +276,10 @@ def read_imdb(data_dir, max_lengths={"train": None, "test": None}):
     return datasets
 
 
+def process_row(processor, row):
+    return processor.process_example((row[1][LABEL_COL], row[1][TEXT_COL]))
+
+
 def create_dataloader(df: pd.DataFrame,
                       processor: TextProcessor,
                       batch_size: int = 32,
@@ -269,13 +288,18 @@ def create_dataloader(df: pd.DataFrame,
                       text_col: str = "text",
                       label_col: str = "label"):
     "Process rows in `df` with `processor` and return a  DataLoader"
-    features, labels = [], []
-    for _, row in tqdm(df.iterrows(),
-                       total=len(df),
-                       desc=f"Processing {len(df)} samples"):
-        ids, lbl = processor.process_example((row[LABEL_COL], row[TEXT_COL]))
-        features += [ids]
-        labels += [lbl]
+
+    with ProcessPoolExecutor(max_workers=num_cores) as executor:
+        result = list(
+            tqdm(executor.map(process_row,
+                              repeat(processor),
+                              df.iterrows(),
+                              chunksize=len(df) // 10),
+                 desc=f"Processing {len(df)} examples on {num_cores} cores",
+                 total=len(df)))
+
+    features = [r[0] for r in result]
+    labels = [r[1] for r in result]
 
     dataset = TensorDataset(torch.tensor(features, dtype=torch.long),
                             torch.tensor(labels, dtype=torch.long))
@@ -293,12 +317,18 @@ def create_dataloader(df: pd.DataFrame,
                                   shuffle=True)
         return train_loader, valid_loader
 
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    data_loader = DataLoader(dataset,
+                             batch_size=batch_size,
+                             num_workers=0,
+                             shuffle=shuffle,
+                             pin_memory=torch.cuda.is_available())
     return data_loader
 
 
-def predict(model, tokenizer, int2label, input="test"):
+def predict(model, tokenizer, int2label, device=None, input="test"):
     "predict `input` with `model`"
+    if device is None:
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     tok = tokenizer.tokenize(input)
     ids = tokenizer.convert_tokens_to_ids(tok) + [tokenizer.vocab['[CLS]']]
     tensor = torch.tensor(ids, dtype=torch.long)
