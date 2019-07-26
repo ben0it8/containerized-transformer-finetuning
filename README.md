@@ -1,2 +1,2 @@
 # docker-job-template
-Dockerized Transformer fine-tuning.
+Dockerized Transformer Fine-tuning
