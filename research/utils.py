@@ -1,4 +1,4 @@
-"""utility.py: Utility code for Transformer fine-tuning on the IMDB Movie Reviews dataset."""
+"""utils.py: utility code for Transformer fine-tuning on the IMDB Movie Reviews dataset."""
 
 __author__ = "Oliver Atanaszov"
 __email__ = "oliver.atanaszov@gmail.com"

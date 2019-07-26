@@ -1,15 +1,12 @@
 # Transformer Fine-Tuning Job
 
-------
-
-## Description
 
 ## Usage 
 
-Run the training job by executing this command with your chosen configuration:
+Run the training job by executing this command with your chosen configuration, exposing port 5000 to the outside world:
 
 ```bash
-docker run finetuning-job
+docker run -p 5000:5000 finetuning-job
 ```
 
 To enable the Nvidia Container Runtime for GPU-acceleration, execute:
@@ -18,17 +15,24 @@ To enable the Nvidia Container Runtime for GPU-acceleration, execute:
 docker run --runtime=nvidia finetuning-job
 ```
 
-
 Execute this command for interactive run mode:
 ```bash
 docker run -it --entrypoint=/bin/bash finetuning-job
 ```
 
+More options:
+
+* publish the container's port 5000 via to `host_port` usinng `-p {host_port}:5000`
+* for testing purposes (fast execution), run with `--env-file==test.env`.
+* run in detached mode usingn `-d`
+
 
 ### Environment variables
 
 The training job can be parametrized with environment variables. These can be defined by passing an [environment file](https://docs.docker.com/compose/compose-file/#env_file) via `--env-file=={env_file}` to `docker run`. To learn about available variables, click [here](#parameters).
-#
+
+
+
 ### Configuration
 
 #### Parameters
@@ -97,6 +101,11 @@ Example varibables:
         <td>OMP_NUM_THREADS</td>
         <td>No. of OpenMP threads used by PyTorch. Shouldn't exceed the no. of physical threads.</td>
         <td>8</td>
+    </tr>
+    <tr>
+        <td>BODY</td>
+        <td>Whether to train the Transformer body. If zero, only train the classifier head (~800 params).</td>
+        <td>1</td>
     </tr>
 
    

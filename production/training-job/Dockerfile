@@ -41,15 +41,17 @@ RUN \
     conda install -y setuptools && \    
     pip install --upgrade pip && \
     pip install typing
-# Install training requirements
+
+# Install training and app requirements
 COPY docker-res/requirements.txt "/tmp/"
 RUN pip install -r "tmp/requirements.txt" && \
     pip install --upgrade bottle && \
     conda clean -ya
 
-# # Set env variables: paths for resources and data + some configs
+# et env variables: paths for resources and data + some configs
 ENV RESOURCES_PATH="/resources" \ 
-    DATA_PATH="/data" \
+    DATA_PATH="/data" \ 
+    LOG_PATH="/log" \ 
     NUM_TRAIN="5000" \
     NUM_TEST="5000" \ 
     NUM_MAX_POSITIONS="256" \ 
@@ -60,7 +62,8 @@ ENV RESOURCES_PATH="/resources" \
     MAX_NORM="2.0" \ 
     SEED="1337" \
     NVIDIA_VISIBLE_DEVICES="all" \
-    OMP_NUM_THREADS="8" 
+    OMP_NUM_THREADS="8"  \
+    BODY="1"
 
      
 RUN \
@@ -70,10 +73,8 @@ RUN \
 
 # copy resources
 COPY docker-res/utils.py "$RESOURCES_PATH/"
-COPY docker-res/run.py "$RESOURCES_PATH/"
+COPY docker-res/fit.py "$RESOURCES_PATH/"
 COPY docker-res/app.py "$RESOURCES_PATH/"
 
-# run training
-CMD ["python", "/resources/run.py"]
-# open 
-CMD ["python", "/resources/app.py"]
+# run training and start webapp at localhost:5000
+CMD ["sh","-c", "python /resources/fit.py && python /resources/app.py"]
