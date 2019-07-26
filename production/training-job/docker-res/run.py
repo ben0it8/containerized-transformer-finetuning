@@ -1,12 +1,16 @@
 import sys
+from subprocess import call
 from utils import *
 
 logger = logging.getLogger("run.py")
 
-# path to data, logging
+logging.basicConfig(stream=sys.stdout,
+                    format='%(asctime)s : %(levelname)s : %(message)s',
+                    level=logging.INFO)
+
+# path to data, logging, resources
 DATA_DIR = getenv_cast("DATA_PATH", cast=str)
 LOG_DIR = getenv_cast("LOG_PATH", cast=str)
-# path to resources
 RESOURCES_DIR = getenv_cast("RESOURCES_PATH", cast=str)
 
 # path to IMDB
@@ -31,7 +35,7 @@ OMP_NUM_THREADS = getenv_cast("BATCH_SIZE", cast=int)
 SEED = getenv_cast("SEED", cast=int)
 LR = getenv_cast("LR", cast=float)
 MAX_NORM = getenv_cast("MAX_NORM", cast=float)
-BODY = getenv_cast("BODY", cast=int)
+TRAIN_BODY = getenv_cast("TRAIN_BODY", cast=int)
 
 # set number of threads for this process and random seed
 torch.set_num_threads(OMP_NUM_THREADS)
@@ -42,7 +46,7 @@ np.random.seed(SEED)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # define rest of parameters
-finetuning_config = FineTuningConfig(2, 0.1, 0.02, BATCH_SIZE, LR, MAX_NORM,
+finetuning_config = FineTuningConfig(2, 0.05, 0.02, BATCH_SIZE, LR, MAX_NORM,
                                      N_EPOCHS, 10, VALID_PCT, 2, device,
                                      LOG_DIR)
 
@@ -98,9 +102,10 @@ if __name__ == "__main__":
                                    fine_tuning_config=finetuning_config).to(
                                        finetuning_config.device)
 
-    if BODY is not None:
+    if not TRAIN_BODY:
         logger.warning(
-            f"BODY is set {BODY}, only training the classifier head!")
+            f"TRAIN_BODY is set to {TRAIN_BODY}, only training the classifier head!"
+        )
         freeze_body(model)
 
     optimizer = AdamW(model.parameters(), lr=finetuning_config.lr)
@@ -145,7 +150,7 @@ if __name__ == "__main__":
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
         evaluator.run(valid_dl)
-        print(
+        logger.info(
             f"Validation epoch {engine.state.epoch},  accuracy: {100*evaluator.state.metrics['accuracy']}"
         )
 
@@ -195,7 +200,7 @@ if __name__ == "__main__":
             f"Test accuracy: {100*evaluator.state.metrics['accuracy']:.3f}")
 
     try:
-        logger.info(f"Training started on device: {device}")
+        logger.warning(f"Training started on device: {device}")
         train()
     except Exception as error:
         logger.error(error)
@@ -203,6 +208,7 @@ if __name__ == "__main__":
 
     eval()
 
-    job_time = timedelta(seconds=round(time() - t0, 1))
-    logger.info(f"Job finished in {str(job_time):0>8}")
+    training_time = timedelta(seconds=round(time() - t0, 1))
+    logger.info(f"Training finished in {str(training_time):0>8}")
+    call("python " + RESOURCES_DIR + "/start_app.py", shell=True)
     sys.exit(0)

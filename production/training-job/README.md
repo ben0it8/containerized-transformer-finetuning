@@ -103,7 +103,7 @@ Example varibables:
         <td>8</td>
     </tr>
     <tr>
-        <td>BODY</td>
+        <td>TRAIN_BODY</td>
         <td>Whether to train the Transformer body. If zero, only train the classifier head (~800 params).</td>
         <td>1</td>
     </tr>

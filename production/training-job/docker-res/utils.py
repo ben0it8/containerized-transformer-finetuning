@@ -210,7 +210,7 @@ def timeit(f):
         ts = time()
         result = f(*args, **kwargs)
         delta = timedelta(seconds=round(time() - ts, 1))
-        print(f"Elapsed time for {f.__name__}: {str(delta):0>8}")
+        logger.info(f"Elapsed time for {f.__name__}: {str(delta):0>8}")
         return result
 
     return wrapper
