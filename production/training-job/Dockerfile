@@ -1,3 +1,4 @@
+# Use nvidia image /w CUDA10 for GPU acceleration
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
 ARG PYTHON_VERSION=3.6
 
@@ -20,13 +21,12 @@ RUN \
     rm -rf /root/.cache/* && \
     rm -rf /tmp/*
 
-# Install Miniconda Python 3.6 & PyTorch cuda10
+# Install Miniconda /w Python 3.6 
 RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
      chmod +x ~/miniconda.sh && \
      ~/miniconda.sh -b -p /opt/conda && \
      rm ~/miniconda.sh && \
      /opt/conda/bin/conda install -y python=$PYTHON_VERSION && \
-    #  /opt/conda/bin/conda install pytorch cudatoolkit=10.0 -c pytorch && \
      /opt/conda/bin/conda clean -ya
 
 ENV PATH /opt/conda/bin:$PATH
@@ -48,10 +48,10 @@ RUN pip install -r "tmp/requirements.txt" && \
     pip install --upgrade bottle && \
     conda clean -ya
 
-# et env variables: paths for resources and data + some configs
+# Set env variables: paths for resources and data + some configs
 ENV RESOURCES_PATH="/resources" \ 
     DATA_PATH="/data" \ 
-    LOG_PATH="/log" \ 
+    LOG_PATH="/logs" \ 
     NUM_TRAIN="5000" \
     NUM_TEST="5000" \ 
     NUM_MAX_POSITIONS="256" \ 
@@ -64,17 +64,16 @@ ENV RESOURCES_PATH="/resources" \
     NVIDIA_VISIBLE_DEVICES="all" \
     OMP_NUM_THREADS="8"  \
     BODY="1"
-
      
 RUN \
     mkdir -p $RESOURCES_PATH && \
     mkdir -p $DATA_PATH && \
     chmod -R a+rwx $DATA_PATH
 
-# copy resources
+# Copy resources
 COPY docker-res/utils.py "$RESOURCES_PATH/"
 COPY docker-res/fit.py "$RESOURCES_PATH/"
 COPY docker-res/app.py "$RESOURCES_PATH/"
 
-# run training and start webapp at localhost:5000
+# Run training and start webapp at localhost:5000
 CMD ["sh","-c", "python /resources/fit.py && python /resources/app.py"]

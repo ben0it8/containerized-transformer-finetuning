@@ -38,7 +38,6 @@ torch.set_num_threads(OMP_NUM_THREADS)
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 
-
 # make code device agnostic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -88,8 +87,8 @@ if __name__ == "__main__":
                                 processor,
                                 batch_size=finetuning_config.batch_size,
                                 valid_pct=None)
-    # download pre-trained model and config
 
+    # download pre-trained model and config
     state_dict = torch.load(cached_path(PRETRAINING_CKPT_URL),
                             map_location='cpu')
     config = torch.load(cached_path(PRETRAINING_ARGS_URL))
@@ -100,6 +99,8 @@ if __name__ == "__main__":
                                        finetuning_config.device)
 
     if BODY is not None:
+        logger.warning(
+            f"BODY is set {BODY}, only training the classifier head!")
         freeze_body(model)
 
     optimizer = AdamW(model.parameters(), lr=finetuning_config.lr)
@@ -204,5 +205,4 @@ if __name__ == "__main__":
 
     job_time = timedelta(seconds=round(time() - t0, 1))
     logger.info(f"Job finished in {str(job_time):0>8}")
-
     sys.exit(0)
