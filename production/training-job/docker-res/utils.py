@@ -46,13 +46,6 @@ num_cores = cpu_count()
 TEXT_COL = "text"
 LABEL_COL = "label"
 
-FineTuningConfig = namedtuple(
-    'FineTuningConfig',
-    field_names=
-    "num_classes, dropout, init_range, batch_size, lr, max_norm, n_epochs,"
-    "n_warmup, valid_pct, gradient_acc_steps, device, log_dir")
-
-
 class TextProcessor:
 
     # special tokens for classification and padding
@@ -330,24 +323,3 @@ def create_dataloader(df: pd.DataFrame,
                              shuffle=shuffle,
                              pin_memory=torch.cuda.is_available())
     return data_loader
-
-
-def predict(model, tokenizer, int2label, device=None, input="test"):
-    "predict `input` with `model`"
-    if device is None:
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    tok = tokenizer.tokenize(input)
-    ids = tokenizer.convert_tokens_to_ids(tok) + [tokenizer.vocab['[CLS]']]
-    tensor = torch.tensor(ids, dtype=torch.long)
-    tensor = tensor.to(device)
-    tensor = tensor.reshape(1, -1)
-    tensor_in = tensor.transpose(0, 1).contiguous()  # [S, 1]
-    logits = model(tensor_in,
-                   clf_tokens_mask=(tensor_in == tokenizer.vocab['[CLS]']),
-                   padding_mask=(tensor == tokenizer.vocab['[PAD]']))
-    val, _ = torch.max(logits, 0)
-    val = F.softmax(val, dim=0).detach().cpu().numpy()
-    return {
-        int2label[val.argmax()]: val.max(),
-        int2label[val.argmin()]: val.min()
-    }

@@ -46,6 +46,12 @@ np.random.seed(SEED)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # define rest of parameters
+FineTuningConfig = namedtuple(
+    'FineTuningConfig',
+    field_names=
+    "num_classes, dropout, init_range, batch_size, lr, max_norm, n_epochs,"
+    "n_warmup, valid_pct, gradient_acc_steps, device, log_dir")
+
 finetuning_config = FineTuningConfig(2, 0.05, 0.02, BATCH_SIZE, LR, MAX_NORM,
                                      N_EPOCHS, 10, VALID_PCT, 2, device,
                                      LOG_DIR)
@@ -92,15 +98,16 @@ if __name__ == "__main__":
                                 batch_size=finetuning_config.batch_size,
                                 valid_pct=None)
 
-    # download pre-trained model and config
+    # download pre-training config and weights
+    config = torch.load(cached_path(PRETRAINING_ARGS_URL))
     state_dict = torch.load(cached_path(PRETRAINING_CKPT_URL),
                             map_location='cpu')
-    config = torch.load(cached_path(PRETRAINING_ARGS_URL))
 
     # init model: Transformer base + classifier head
     model = TransformerWithClfHead(config=config,
                                    fine_tuning_config=finetuning_config).to(
                                        finetuning_config.device)
+    model.load_state_dict(state_dict, strict=False)
 
     if not TRAIN_BODY:
         logger.warning(
@@ -178,14 +185,15 @@ if __name__ == "__main__":
     # save metadata
     torch.save(
         {
-            "config": config,
-            "config_ft": finetuning_config,
+            "config": config.__dict__,
+            "config_ft": finetuning_config._asdict(),
             "int2label": int2label
         }, os.path.join(finetuning_config.log_dir, "metadata.bin"))
 
     @timeit
     def train():
         "fit the model on `train_dl`"
+        logger.info(finetuning_config)
         trainer.run(train_dl, max_epochs=finetuning_config.n_epochs)
         # save model weights
         torch.save(
@@ -210,5 +218,6 @@ if __name__ == "__main__":
 
     training_time = timedelta(seconds=round(time() - t0, 1))
     logger.info(f"Training finished in {str(training_time):0>8}")
-    call("python " + RESOURCES_DIR + "/start_app.py", shell=True)
+
+    call(f"cd {RESOURCES_DIR} && uvicorn app:app --host 0.0.0.0 --port 8000", shell=True)
     sys.exit(0)
