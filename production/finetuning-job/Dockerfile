@@ -32,7 +32,7 @@ RUN \
 RUN wget --quiet https://github.com/krallin/tini/releases/download/v0.18.0/tini -O /tini && \
     chmod +x /tini
 
-# Install Miniconda /w Python 3.7 + some basics
+# Install Miniconda + some basics
 ARG MINICONDA_URL=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 RUN \
      curl -o ~/miniconda.sh -O $MINICONDA_URL && \

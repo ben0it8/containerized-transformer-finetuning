@@ -219,5 +219,6 @@ if __name__ == "__main__":
     training_time = timedelta(seconds=round(time() - t0, 1))
     logger.info(f"Training finished in {str(training_time):0>8}")
 
-    call(f"cd {RESOURCES_DIR} && uvicorn app:app --host 0.0.0.0 --port 8000", shell=True)
+    call(f"cd {RESOURCES_DIR} && uvicorn app:app --host 0.0.0.0 --port 8000",
+         shell=True)
     sys.exit(0)

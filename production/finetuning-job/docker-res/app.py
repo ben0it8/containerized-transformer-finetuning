@@ -4,6 +4,7 @@ logging.basicConfig(stream=sys.stdout,
                     format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
 import torch
+torch.manual_seed(os.getenv("SEED", 1337))
 import torch.nn.functional as F
 from pytorch_transformers import BertTokenizer
 from utils import TransformerWithClfHead
