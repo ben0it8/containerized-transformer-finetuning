@@ -1,4 +1,7 @@
 # Transformer Fine-Tuning Job
+Running this job via Docker fits a model that predicts the sentiment of movie reviews and deploys the model as a service:
+
+![app](https://github.com/ben0it8/containerized-transformer-finetuning/blob/develop/docs/app_demo.gif)
 
 
 ## Usage 
